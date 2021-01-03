@@ -1,0 +1,16 @@
+{
+    "name": "Sparkade.SparkTools.ObjectPooling",
+    "rootNamespace": "",
+    "references": [
+        "GUID:c66f7e99e27b7fe4dbdbdb93031467e5"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

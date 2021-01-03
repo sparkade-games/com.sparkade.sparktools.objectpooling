@@ -1,0 +1,18 @@
+{
+  "name": "com.sparkade.sparktools.objectpooling",
+  "version": "1.0.0",
+  "displayName": "SparkTools: Object Pooling",
+  "description": "A generic object pooling solution for C#, along with a Unity specific application of it.",
+  "unity": "2020.2",
+  "unityRelease": "0f1",
+  "keywords": [
+    "sparktools"
+  ],
+  "author": {
+    "name": "Sparkade Games"
+  },
+  "type": "tool",
+  "dependencies": {
+    "com.sparkade.sparktools.singletons": ""
+  }
+}
