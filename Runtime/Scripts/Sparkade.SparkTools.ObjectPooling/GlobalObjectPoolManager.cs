@@ -1,5 +1,6 @@
 namespace Sparkade.SparkTools.ObjectPooling
 {
+    using Sparkade.SparkTools.ObjectPooling.Generic;
     using Sparkade.SparkTools.ObjectPooling.Internal;
     using Sparkade.SparkTools.Singletons;
     using UnityEngine;
@@ -28,106 +29,66 @@ namespace Sparkade.SparkTools.ObjectPooling
         }
 
         /// <inheritdoc/>
-        public void CreatePool(GameObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
+        public void CreatePool<T>(T prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
+            where T : ObjectPoolItem<T>
         {
             this.PoolManager.CreatePool(prefab, size, accessMode, loadingMode);
-        }
-
-        /// <inheritdoc/>
-        public void CreatePool(MonoBehaviour prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
-        {
-            this.PoolManager.CreatePool(prefab, size, accessMode, loadingMode);
-        }
-
-        /// <inheritdoc/>
-        public GameObjectPool GetPool(GameObject prefab)
-        {
-            return this.PoolManager.GetPool(prefab);
-        }
-
-        /// <inheritdoc/>
-        public GameObjectPool GetPool(MonoBehaviour prefab)
-        {
-            return this.PoolManager.GetPool(prefab);
-        }
-
-        /// <inheritdoc/>
-        public GameObject Pull(GameObject prefab)
-        {
-            return this.PoolManager.Pull(prefab);
         }
 
         /// <inheritdoc/>
         public T Pull<T>(T prefab)
-            where T : MonoBehaviour
+             where T : ObjectPoolItem<T>
         {
             return this.PoolManager.Pull(prefab);
         }
 
         /// <inheritdoc/>
-        public void Push(GameObject prefab, GameObject item)
+        public void Push<T>(T prefab, T item)
+            where T : ObjectPoolItem<T>
         {
             this.PoolManager.Push(prefab, item);
         }
 
         /// <inheritdoc/>
-        public void Push(MonoBehaviour prefab, MonoBehaviour item)
-        {
-            this.PoolManager.Push(prefab, item);
-        }
-
-        /// <inheritdoc/>
-        public bool HasPool(GameObject prefab)
+        public bool HasPool<T>(T prefab)
+             where T : ObjectPoolItem<T>
         {
             return this.PoolManager.HasPool(prefab);
         }
 
         /// <inheritdoc/>
-        public bool HasPool(MonoBehaviour prefab)
+        public ObjectPool<T> GetPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
-            return this.PoolManager.HasPool(prefab);
+            return this.PoolManager.GetPool(prefab);
         }
 
         /// <inheritdoc/>
-        public int GetCount(GameObject prefab)
+        public int GetCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             return this.PoolManager.GetCount(prefab);
         }
 
         /// <inheritdoc/>
-        public int GetCount(MonoBehaviour prefab)
-        {
-            return this.PoolManager.GetCount(prefab);
-        }
-
-        /// <inheritdoc/>
-        public int GetFreeCount(GameObject prefab)
+        public int GetFreeCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             return this.PoolManager.GetFreeCount(prefab);
         }
 
         /// <inheritdoc/>
-        public int GetFreeCount(MonoBehaviour prefab)
+        public int GetInUseCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
-            return this.PoolManager.GetFreeCount(prefab);
+            return this.PoolManager.GetInUseCount(prefab);
         }
 
         /// <inheritdoc/>
-        public void ClearPool(GameObject prefab)
+        public void ClearPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             this.PoolManager.ClearPool(prefab);
-        }
-
-        /// <inheritdoc/>
-        public void ClearPool(MonoBehaviour prefab)
-        {
-            this.PoolManager.ClearPool(prefab);
-        }
-
-        /// <inheritdoc/>
-        public void Clear()
-        {
-            this.PoolManager.Clear();
         }
     }
 }
