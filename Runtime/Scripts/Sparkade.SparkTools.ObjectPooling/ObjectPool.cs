@@ -123,8 +123,6 @@
                 return;
             }
 
-            Debug.Log("PRUNED");
-
             if (this.StoredItems.Remove(item))
             {
                 T[] ownedItems = this.GetOwnedItems();
@@ -132,7 +130,6 @@
                 this.InitItemStore(this.AccessMode, this.Size);
                 this.OwnedItems = new HashSet<T>(ownedItems);
                 this.StoredItems = new HashSet<T>(storedItems);
-                Debug.Log("STORE FIXED");
             }
         }
 
