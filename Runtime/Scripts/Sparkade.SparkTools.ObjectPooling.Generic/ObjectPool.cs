@@ -1,7 +1,8 @@
-﻿namespace Sparkade.SparkTools.ObjectPooling
+﻿namespace Sparkade.SparkTools.ObjectPooling.Generic
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
     /// <summary>
     /// A completely generic object pool.
@@ -31,7 +32,7 @@
             this.Size = size;
             this.AccessMode = accessMode;
             this.LoadingMode = loadingMode;
-            this.ItemStore = this.CreateItemStore(this.AccessMode, this.Size);
+            this.InitItemStore(this.AccessMode, this.Size);
 
             if (loadingMode == PoolLoadingMode.Eager)
             {
@@ -128,17 +129,14 @@
         /// <returns>The object pulled.</returns>
         public virtual T PullWithoutCallback()
         {
-            T item;
             if (this.FreeCount == 0 || (this.LoadingMode == PoolLoadingMode.Lazy && this.Count < this.Size))
             {
-                item = this.CreateItem();
+                return this.CreateItem();
             }
             else
             {
-                item = this.FetchItem();
+                return this.FetchItem();
             }
-
-            return item;
         }
 
         /// <summary>
@@ -166,22 +164,40 @@
         }
 
         /// <summary>
-        /// Initializes the item store for the pool.
+        /// Gets whether or not an object is owned by this pool.
         /// </summary>
-        /// <param name="mode">Access mode of the pool.</param>
-        /// <param name="size">Size of the pool.</param>
-        /// <returns>The created item store.</returns>
-        protected virtual IItemStore CreateItemStore(PoolAccessMode mode, int size)
+        /// <param name="item">The object to check.</param>
+        /// <returns>True if the object belongs to this pool, false if it does not.</returns>
+        public bool GetOwnsItem(T item)
         {
-            this.OwnedItems = new HashSet<T>();
-            this.StoredItems = new HashSet<T>();
+            return this.OwnedItems.Contains(item);
+        }
 
-            return mode switch
-            {
-                PoolAccessMode.FirstIn => new QueueStore(size),
-                PoolAccessMode.LastIn => new StackStore(size),
-                _ => null,
-            };
+        /// <summary>
+        /// Gets all objects owned by the pool.
+        /// </summary>
+        /// <returns>An array of all objects owned by the pool.</returns>
+        public T[] GetOwnedItems()
+        {
+            return this.OwnedItems.ToArray();
+        }
+
+        /// <summary>
+        /// Gets all objects currently stored in the pool.
+        /// </summary>
+        /// <returns>An array of all objects currently stored in the pool.</returns>
+        public T[] GetFreeItems()
+        {
+            return this.StoredItems.ToArray();
+        }
+
+        /// <summary>
+        /// Gets all objects owned by the pool that are not currently stored in it.
+        /// </summary>
+        /// <returns>An array of all objects owned by the pool that are not currently stored in it.</returns>
+        public T[] GetInUseItems()
+        {
+            return this.OwnedItems.Except(this.StoredItems).ToArray();
         }
 
         /// <summary>
@@ -193,17 +209,6 @@
             T item = this.Factory(this);
             this.OwnedItems.Add(item);
             return item;
-        }
-
-        /// <summary>
-        /// Creates enough objects for the pool to reach its size and places them in the item store.
-        /// </summary>
-        protected virtual void PreloadItems()
-        {
-            for (int i = 0; i < this.Size; i += 1)
-            {
-                this.StoreItem(this.CreateItem());
-            }
         }
 
         /// <summary>
@@ -225,6 +230,35 @@
         {
             this.ItemStore.Store(item);
             this.StoredItems.Add(item);
+        }
+
+        /// <summary>
+        /// Initializes the item store for the pool.
+        /// </summary>
+        /// <param name="mode">Access mode of the pool.</param>
+        /// <param name="size">Size of the pool.</param>
+        protected virtual void InitItemStore(PoolAccessMode mode, int size)
+        {
+            this.OwnedItems = new HashSet<T>();
+            this.StoredItems = new HashSet<T>();
+
+            this.ItemStore = mode switch
+            {
+                PoolAccessMode.FirstIn => new QueueStore(size),
+                PoolAccessMode.LastIn => new StackStore(size),
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// Creates enough objects for the pool to reach its size and places them in the item store.
+        /// </summary>
+        protected virtual void PreloadItems()
+        {
+            for (int i = 0; i < this.Size; i += 1)
+            {
+                this.StoreItem(this.CreateItem());
+            }
         }
 
         /// <summary>

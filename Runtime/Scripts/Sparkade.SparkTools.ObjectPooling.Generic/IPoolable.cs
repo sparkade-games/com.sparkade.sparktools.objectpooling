@@ -1,10 +1,15 @@
-﻿namespace Sparkade.SparkTools.ObjectPooling
+﻿namespace Sparkade.SparkTools.ObjectPooling.Generic
 {
     /// <summary>
     /// Provides several callbacks related to being an object in a pool.
     /// </summary>
     public interface IPoolable
     {
+        /// <summary>
+        /// Returns the object back to the object pool it belongs to.
+        /// </summary>
+        void Repool();
+
         /// <summary>
         /// Called when the object is pulled from a pool.
         /// </summary>
