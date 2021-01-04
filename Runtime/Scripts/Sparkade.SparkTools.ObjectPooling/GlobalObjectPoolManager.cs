@@ -1,3 +1,4 @@
+/*
 namespace Sparkade.SparkTools.ObjectPooling
 {
     using Sparkade.SparkTools.ObjectPooling.Internal;
@@ -131,3 +132,4 @@ namespace Sparkade.SparkTools.ObjectPooling
         }
     }
 }
+*/

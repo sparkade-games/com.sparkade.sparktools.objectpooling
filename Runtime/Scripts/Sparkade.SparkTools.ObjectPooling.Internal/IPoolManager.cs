@@ -1,3 +1,4 @@
+/*
 namespace Sparkade.SparkTools.ObjectPooling.Internal
 {
     using UnityEngine;
@@ -134,3 +135,4 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
         public void Clear();
     }
 }
+*/

@@ -1,47 +1,48 @@
 ﻿namespace Sparkade.SparkTools.ObjectPooling
 {
     using System;
-    using System.Linq;
+    using System.Collections.Generic;
+    using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
     using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
-    /// An object pool tracked by MonoBehaviour.
+    /// A Unity implimentation of the generic object pool.
     /// </summary>
-    /// <typeparam name="T">The type of MonoBehaviour stored in the pool.</typeparam>
-    public class MonoBehaviourPool<T> : ObjectPool<T>
-        where T : MonoBehaviour
+    /// <typeparam name="T">The type of ObjectPoolItem to be stored in the pool.</typeparam>
+    public class ObjectPool<T> : Generic.ObjectPool<T>
+        where T : ObjectPoolItem<T>
     {
-        private readonly string poolParentName;
         private GameObject poolParent;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MonoBehaviourPool{T}"/> class.
+        /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
         /// </summary>
-        /// <param name="monoBehaviour">The MonoBehaviour to be copied when creating a new object for the pool.</param>
+        /// <param name="objectPoolItem">The ObjectPoolItem to be copied when creating a new object for the pool.</param>
         /// <param name="size">The target size of the pool. The pool will expand beyond this size if needed.</param>
         /// <param name="accessMode">Determines the order in which a pool pulls objects from its store.</param>
         /// <param name="loadingMode">Determines how a pool reaches its size.</param>
-        public MonoBehaviourPool(
-            T monoBehaviour,
+        public ObjectPool(
+            T objectPoolItem,
             int size = 0,
             PoolAccessMode accessMode = PoolAccessMode.LastIn,
             PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
             : base(
                     (objectPool) =>
                     {
-                        return GameObject.Instantiate(monoBehaviour.gameObject).GetComponent<T>();
+                        return GameObject.Instantiate(objectPoolItem.gameObject).GetComponent<T>();
                     },
                     size,
                     accessMode,
                     loadingMode)
         {
-            if (monoBehaviour == null)
+            if (objectPoolItem == null)
             {
-                throw new ArgumentNullException("monoBehaviour");
+                throw new ArgumentNullException("objectPoolItem");
             }
-
-            this.poolParentName = monoBehaviour.name;
         }
 
         /// <summary>
@@ -53,7 +54,7 @@
             {
                 if (this.poolParent == null)
                 {
-                    this.poolParent = new GameObject($"{this.poolParentName} Pool");
+                    this.poolParent = new GameObject($"{typeof(T).Name} Pool");
                     this.poolParent.SetActive(false);
                     this.OnPoolParentCreated?.Invoke(this.poolParent);
                 }
@@ -71,7 +72,7 @@
         public override T Pull()
         {
             T item = this.PullWithoutCallback();
-            (item as IPoolable)?.OnPull();
+            item.OnPull();
             this.OnPull?.Invoke(item);
             return item;
         }
@@ -80,7 +81,7 @@
         public override void Push(T item)
         {
             this.PushWithoutCallback(item);
-            (item as IPoolable)?.OnPush();
+            item.OnPush();
             this.OnPush?.Invoke(item);
         }
 
@@ -105,49 +106,55 @@
         }
 
         /// <summary>
+        /// Removes a specific object from the pool's ownership. Useful when an object is being destroyed.
+        /// </summary>
+        /// <param name="item">The item to be pruned.</param>
+        public void PruneItem(T item)
+        {
+#if UNITY_EDITOR
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && EditorApplication.isPlaying)
+            {
+                return;
+            }
+#endif
+
+            if (!this.OwnedItems.Remove(item))
+            {
+                return;
+            }
+
+            Debug.Log("PRUNED");
+
+            if (this.StoredItems.Remove(item))
+            {
+                T[] ownedItems = this.GetOwnedItems();
+                T[] storedItems = this.GetFreeItems();
+                this.InitItemStore(this.AccessMode, this.Size);
+                this.OwnedItems = new HashSet<T>(ownedItems);
+                this.StoredItems = new HashSet<T>(storedItems);
+                Debug.Log("STORE FIXED");
+            }
+        }
+
+        /// <summary>
         /// Destroys all objects in the pool.
         /// </summary>
         public void Clear()
         {
-            T[] items = this.OwnedItems.ToArray();
-            for (int i = 0; i < items.Length; i += 1)
+            foreach (T item in this.OwnedItems)
             {
-                GameObject.Destroy(items[i].gameObject);
+                GameObject.Destroy(item.gameObject);
             }
 
-            this.ItemStore = this.CreateItemStore(this.AccessMode, this.Size);
+            this.InitItemStore(this.AccessMode, this.Size);
         }
 
-        /// <summary>
-        /// Removes references to destroyed objects from the pool. This must be done in instances where objects managed by the pool are destroyed, rather than pushed back into it.
-        /// </summary>
-        public void Prune()
+        /// <inheritdoc/>
+        protected override T CreateItem()
         {
-            int prevStoredCount = this.StoredItems.Count;
-            T[] destroyedItems = this.OwnedItems.Where(item => item == null).ToArray();
-            for (int i = 0; i < destroyedItems.Length; i += 1)
-            {
-                this.OwnedItems.Remove(destroyedItems[i]);
-                this.StoredItems.Remove(destroyedItems[i]);
-            }
-
-            if (this.StoredItems.Count != prevStoredCount)
-            {
-                T[] tempOwnedItems = this.OwnedItems.ToArray();
-                T[] tempStoredItems = this.StoredItems.ToArray();
-
-                this.ItemStore = this.CreateItemStore(this.AccessMode, this.Size);
-
-                for (int i = 0; i < tempOwnedItems.Length; i += 1)
-                {
-                    this.OwnedItems.Add(tempOwnedItems[i]);
-                }
-
-                for (int i = 0; i < tempStoredItems.Length; i += 1)
-                {
-                    this.StoreItem(tempStoredItems[i]);
-                }
-            }
+            T item = base.CreateItem();
+            item.ObjectPool = this;
+            return item;
         }
     }
 }

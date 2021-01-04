@@ -1,11 +1,12 @@
-﻿namespace Sparkade.SparkTools.ObjectPooling.Internal
+﻿/*
+namespace Sparkade.SparkTools.ObjectPooling.Internal
 {
     using System;
     using System.Collections.Generic;
     using UnityEngine;
 
     /// <summary>
-    /// Manages multiple GameObject pools, automatically generating them as needed.
+    /// Manages multiple object pools, automatically generating them as needed.
     /// </summary>
     internal class InternalPoolManager : IPoolManager
     {
@@ -310,3 +311,4 @@
         }
     }
 }
+*/
