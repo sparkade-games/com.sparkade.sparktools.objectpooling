@@ -9,21 +9,19 @@ If you wish to manually install, clone the repository into the `Packages` folder
 # How it works
 Object pooling allows you to re-use objects instead of constantly destroying and creating them.
 
-The `GameObjectPool`, `MonoBehaviourPool`, and `ObjectPool` classes can manage this recycling of objects, only creating new objects when needed.
+The `ObjectPool` and `ObjectPoolItem` classes can manage this recycling of objects, only creating new objects when needed.
 
 The `ObjectPoolManager` and `GlobalObjectPoolManager` take this one step further and manage object pools, creating new object pools automatically when needed.
 
 # How to Use
 
 ## Object Pool Types
-- **ObjectPool:** Generic object pool, can be used for any C# objects. In fact every other object pool inherits from this.
+- **Generic ObjectPool:** Generic object pool, can be used for any C# objects.
 
-- **MonoBehaviourPool:** A Unity specific pool that allows you to push and pull MonoBehaviours based on a prefab containing an instance of the MonoBehaviour, though it still keeps each MonoBehaviour on its own GameObject.
-
-- **GameObjectPool:** A Unity specific pool that allows you to push and pull GameObjects based on a prefab. Every MonoBehaviour that impliments `IPoolable` will recieve notifications.
+- **Unity ObjectPool:** A Unity specific implimentation of the generic object pool that allows you to push and pull `ObjectPoolItem`s based on a prefab containing an instance of the MonoBehaviour.
 
 ## Object Pool Managers
-Object Pool Managers streamline the use of Unity specific object pools. They are Singletons that you can use to push or pull GameObjects and MonoBehaviours, and pools will be set up and expanded as needed. They come in two flavors:
+Object Pool Managers streamline the use of Unity specific object pools. They are Singletons that you can use to push or pull `ObjectPoolItem`s, and pools will be set up and expanded as needed. They come in two flavors:
 
 - **ObjectPoolManager:** Manages object pools that exist for the life of the scene they were created in.
 
@@ -34,19 +32,20 @@ Both of these provide options to self manage pools, allowing you to create or de
 # Example
 Let's make a projectile:
 ```
-public class Projectile : MonoBehaviour, IPoolable
+public class Projectile : ObjectPoolItem<Projectile>
 {
     public Vector2 direction;
 
     private float speed;
 
-    public void OnPull()
+    private void Awake()
     {
-        speed = 0.0f;
+        OnPull += ResetSpeed;
     }
 
-    public void OnPush()
+    public void ResetSpeed()
     {
+        speed = 0.0f;
     }
 
     void Update()
@@ -56,7 +55,7 @@ public class Projectile : MonoBehaviour, IPoolable
     }
 }
 ```
-Notice we implimented the `IPoolable` interface, which gives us the `OnPull` and `OnPush` callbacks. We use this to reset the projectile's speed every time it is pulled.
+Notice we inherited from `ObjectPoolItem`, which gives us the `OnPull` and `OnPush` callbacks. We use this to reset the projectile's speed every time it is pulled.
 
 Now, we can use the ObjectPoolManager to spawn our projectiles:
 ```
