@@ -1,8 +1,9 @@
-﻿/*
-namespace Sparkade.SparkTools.ObjectPooling.Internal
+﻿namespace Sparkade.SparkTools.ObjectPooling.Internal
 {
     using System;
     using System.Collections.Generic;
+    using Sparkade.SparkTools.ObjectPooling;
+    using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
 
     /// <summary>
@@ -20,20 +21,16 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
         }
 
         /// <summary>
-        /// Gets a dictionary of all GameObjectPools, based on a prefab.
+        /// Gets a dictionary of all object pools based on a prefab.
         /// </summary>
-        public Dictionary<GameObject, GameObjectPool> GameObjectPools { get; } = new Dictionary<GameObject, GameObjectPool>();
-
-        /// <summary>
-        /// Gets a dictionary of all MonoBehaviourPools, based on a prefab.
-        /// </summary>
-        public Dictionary<MonoBehaviour, GameObjectPool> MonoBehaviourPools { get; } = new Dictionary<MonoBehaviour, GameObjectPool>();
+        public Dictionary<object, object> ObjectPools { get; } = new Dictionary<object, object>();
 
         /// <inheritdoc/>
         public GameObject PoolParent { get; }
 
         /// <inheritdoc/>
-        public void CreatePool(GameObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
+        public void CreatePool<T>(T prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -45,79 +42,18 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 throw new InvalidOperationException("Pool already exists.");
             }
 
-            GameObjectPool pool = new GameObjectPool(prefab, size, accessMode, loadingMode);
+            ObjectPooling.ObjectPool<T> pool = new ObjectPooling.ObjectPool<T>((T)prefab, size, accessMode, loadingMode);
             pool.OnPoolParentCreated += (obj) =>
             {
                 obj.transform.SetParent(this.PoolParent.transform);
             };
 
-            this.GameObjectPools.Add(prefab, pool);
-        }
-
-        /// <inheritdoc/>
-        public void CreatePool(MonoBehaviour prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            if (this.HasPool(prefab))
-            {
-                throw new InvalidOperationException("Pool already exists.");
-            }
-
-            GameObjectPool pool = new GameObjectPool(prefab.gameObject, size, accessMode, loadingMode);
-            pool.OnPoolParentCreated += (obj) =>
-            {
-                obj.name = $"{prefab.name} Pool";
-                obj.transform.SetParent(this.PoolParent.transform);
-            };
-
-            this.MonoBehaviourPools.Add(prefab, pool);
-        }
-
-        /// <inheritdoc/>
-        public GameObjectPool GetPool(GameObject prefab)
-        {
-            if (!this.HasPool(prefab))
-            {
-                return null;
-            }
-
-            return this.GameObjectPools[prefab];
-        }
-
-        /// <inheritdoc/>
-        public GameObjectPool GetPool(MonoBehaviour prefab)
-        {
-            if (!this.HasPool(prefab))
-            {
-                return null;
-            }
-
-            return this.MonoBehaviourPools[prefab];
-        }
-
-        /// <inheritdoc/>
-        public GameObject Pull(GameObject prefab)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            if (!this.HasPool(prefab))
-            {
-                this.CreatePool(prefab);
-            }
-
-            return this.GameObjectPools[prefab].Pull();
+            this.ObjectPools.Add(prefab, pool);
         }
 
         /// <inheritdoc/>
         public T Pull<T>(T prefab)
-            where T : MonoBehaviour
+             where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -129,11 +65,12 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 this.CreatePool(prefab);
             }
 
-            return this.MonoBehaviourPools[prefab].Pull().GetComponent<T>();
+            return ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Pull();
         }
 
         /// <inheritdoc/>
-        public void Push(GameObject prefab, GameObject item)
+        public void Push<T>(T prefab, T item)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -150,54 +87,36 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 this.CreatePool(prefab);
             }
 
-            this.GameObjectPools[prefab].Push(item);
+            ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Push(item);
         }
 
         /// <inheritdoc/>
-        public void Push(MonoBehaviour prefab, MonoBehaviour item)
+        public bool HasPool<T>(T prefab)
+             where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
                 throw new ArgumentNullException("prefab");
             }
 
-            if (item == null)
-            {
-                throw new ArgumentNullException("item");
-            }
+            return this.ObjectPools.ContainsKey(prefab);
+        }
 
+        /// <inheritdoc/>
+        public ObjectPooling.ObjectPool<T> GetPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
             if (!this.HasPool(prefab))
             {
-                this.CreatePool(prefab);
+                return null;
             }
 
-            this.MonoBehaviourPools[prefab].Push(item.gameObject);
+            return (ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab];
         }
 
         /// <inheritdoc/>
-        public bool HasPool(GameObject prefab)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            return this.GameObjectPools.ContainsKey(prefab);
-        }
-
-        /// <inheritdoc/>
-        public bool HasPool(MonoBehaviour prefab)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            return this.MonoBehaviourPools.ContainsKey(prefab);
-        }
-
-        /// <inheritdoc/>
-        public int GetCount(GameObject prefab)
+        public int GetCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -209,11 +128,12 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 return 0;
             }
 
-            return this.GameObjectPools[prefab].Count;
+            return ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Count;
         }
 
         /// <inheritdoc/>
-        public int GetCount(MonoBehaviour prefab)
+        public int GetFreeCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -225,11 +145,12 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 return 0;
             }
 
-            return this.MonoBehaviourPools[prefab].Count;
+            return ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).FreeCount;
         }
 
         /// <inheritdoc/>
-        public int GetFreeCount(GameObject prefab)
+        public int GetInUseCount<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -241,27 +162,12 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 return 0;
             }
 
-            return this.GameObjectPools[prefab].FreeCount;
+            return ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).InUseCount;
         }
 
         /// <inheritdoc/>
-        public int GetFreeCount(MonoBehaviour prefab)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            if (!this.HasPool(prefab))
-            {
-                return 0;
-            }
-
-            return this.MonoBehaviourPools[prefab].FreeCount;
-        }
-
-        /// <inheritdoc/>
-        public void ClearPool(GameObject prefab)
+        public void ClearPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
         {
             if (prefab == null)
             {
@@ -273,42 +179,7 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
                 return;
             }
 
-            this.GameObjectPools[prefab].Clear();
-        }
-
-        /// <inheritdoc/>
-        public void ClearPool(MonoBehaviour prefab)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            if (!this.HasPool(prefab))
-            {
-                return;
-            }
-
-            this.MonoBehaviourPools[prefab].Clear();
-        }
-
-        /// <inheritdoc/>
-        public void Clear()
-        {
-            foreach (KeyValuePair<GameObject, GameObjectPool> entry in this.GameObjectPools)
-            {
-                entry.Value.Clear();
-            }
-
-            this.GameObjectPools.Clear();
-
-            foreach (KeyValuePair<MonoBehaviour, GameObjectPool> entry in this.MonoBehaviourPools)
-            {
-                entry.Value.Clear();
-            }
-
-            this.MonoBehaviourPools.Clear();
+            ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Clear();
         }
     }
 }
-*/

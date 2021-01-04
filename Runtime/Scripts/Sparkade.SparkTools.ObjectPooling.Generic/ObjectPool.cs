@@ -245,7 +245,7 @@
             {
                 PoolAccessMode.FirstIn => new QueueStore(size),
                 PoolAccessMode.LastIn => new StackStore(size),
-                _ => null,
+                _ => throw new ArgumentException($"No ItemStore exists for PoolAccessMode '{mode}'.", "mode"),
             };
         }
 
