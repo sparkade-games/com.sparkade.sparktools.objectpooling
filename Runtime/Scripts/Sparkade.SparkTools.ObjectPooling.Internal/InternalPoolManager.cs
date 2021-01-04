@@ -52,6 +52,25 @@
         }
 
         /// <inheritdoc/>
+        public void DestroyPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException("prefab");
+            }
+
+            if (!this.HasPool(prefab))
+            {
+                throw new InvalidOperationException("Pool does not exist.");
+            }
+
+            ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Clear();
+            GameObject.Destroy(((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).PoolParent);
+            this.ObjectPools.Remove(prefab);
+        }
+
+        /// <inheritdoc/>
         public T Pull<T>(T prefab)
              where T : ObjectPoolItem<T>
         {

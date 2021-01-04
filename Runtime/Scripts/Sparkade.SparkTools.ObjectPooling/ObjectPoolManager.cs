@@ -36,6 +36,13 @@ namespace Sparkade.SparkTools.ObjectPooling
         }
 
         /// <inheritdoc/>
+        public void DestroyPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            this.PoolManager.DestroyPool(prefab);
+        }
+
+        /// <inheritdoc/>
         public T Pull<T>(T prefab)
              where T : ObjectPoolItem<T>
         {

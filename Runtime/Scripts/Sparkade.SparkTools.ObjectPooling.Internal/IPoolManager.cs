@@ -26,6 +26,14 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
             where T : ObjectPoolItem<T>;
 
         /// <summary>
+        /// Destroys an ObjectPool and all its managed objects.
+        /// </summary>
+        /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
+        /// <param name="prefab">The ObjectPoolItem to be copied when creating a new object for the pool.</param>
+        public void DestroyPool<T>(T prefab)
+            where T : ObjectPoolItem<T>;
+
+        /// <summary>
         /// Returns an object from a pool. If no pool exists, one will be created. If no objects are currently free, one will be created.
         /// </summary>
         /// <param name="prefab">ObjectPoolItem prefab associated with the pool.</param>
