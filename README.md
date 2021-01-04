@@ -18,10 +18,10 @@ The `ObjectPoolManager` and `GlobalObjectPoolManager` take this one step further
 ## Object Pool Types
 - **Generic ObjectPool:** Generic object pool, can be used for any C# objects.
 
-- **Unity ObjectPool:** A Unity specific implimentation of the generic object pool that allows you to push and pull `ObjectPoolItem`s based on a prefab containing an instance of the MonoBehaviour.
+- **Unity ObjectPool:** A Unity specific implimentation of the generic object pool that allows you to push and pull GameObjectss based on a prefab containing an instance of the `ObjectPoolItem`.
 
 ## Object Pool Managers
-Object Pool Managers streamline the use of Unity specific object pools. They are Singletons that you can use to push or pull `ObjectPoolItem`s, and pools will be set up and expanded as needed. They come in two flavors:
+Object Pool Managers streamline the use of Unity specific object pools. They are Singletons that you can use to push or pull `ObjectPoolItem`'s, and pools will be set up and expanded as needed. They come in two flavors:
 
 - **ObjectPoolManager:** Manages object pools that exist for the life of the scene they were created in.
 
@@ -29,13 +29,14 @@ Object Pool Managers streamline the use of Unity specific object pools. They are
 
 Both of these provide options to self manage pools, allowing you to create or destroy them manually as well.
 
+The `GlobalObjectPoolManager` will require a bit more manual managemnet, as any pooled items still in a scene as it unloads will be destroyed instead of being brought back to the pool.
+
 # Example
 Let's make a projectile:
 ```
 public class Projectile : ObjectPoolItem<Projectile>
 {
-    public Vector2 direction;
-
+    private Vector2 direction;
     private float speed;
 
     private void Awake()
@@ -56,6 +57,8 @@ public class Projectile : ObjectPoolItem<Projectile>
 }
 ```
 Notice we inherited from `ObjectPoolItem`, which gives us the `OnPull` and `OnPush` callbacks. We use this to reset the projectile's speed every time it is pulled.
+
+You may have also noticed the `<Projectile>` type passed to the `ObjectPoolItem`. This should always be the same type as the object it is inheriting from.
 
 Now, we can use the ObjectPoolManager to spawn our projectiles:
 ```
