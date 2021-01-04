@@ -12,6 +12,7 @@
     public class ObjectPool<T> : Generic.ObjectPool<T>
         where T : ObjectPoolItem<T>
     {
+        private readonly string poolParentName;
         private GameObject poolParent;
 
         /// <summary>
@@ -39,6 +40,8 @@
             {
                 throw new ArgumentNullException("objectPoolItem");
             }
+
+            this.poolParentName = objectPoolItem.gameObject.name;
         }
 
         /// <summary>
@@ -50,7 +53,7 @@
             {
                 if (this.poolParent == null)
                 {
-                    this.poolParent = new GameObject($"{typeof(T).Name} Pool");
+                    this.poolParent = new GameObject($"{this.poolParentName} Pool");
                     this.poolParent.SetActive(false);
                     this.OnPoolParentCreated?.Invoke(this.poolParent);
                 }
