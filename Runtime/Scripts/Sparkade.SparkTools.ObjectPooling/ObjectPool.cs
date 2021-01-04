@@ -1,13 +1,9 @@
 ﻿namespace Sparkade.SparkTools.ObjectPooling
 {
     using System;
-    using System.Collections.Generic;
     using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
     using UnityEngine.SceneManagement;
-#if UNITY_EDITOR
-    using UnityEditor;
-#endif
 
     /// <summary>
     /// A Unity implimentation of the generic object pool.
@@ -72,7 +68,7 @@
         public override T Pull()
         {
             T item = this.PullWithoutCallback();
-            item.OnPull();
+            item.OnPull?.Invoke();
             this.OnPull?.Invoke(item);
             return item;
         }
@@ -81,7 +77,7 @@
         public override void Push(T item)
         {
             this.PushWithoutCallback(item);
-            item.OnPush();
+            item.OnPush?.Invoke();
             this.OnPush?.Invoke(item);
         }
 
@@ -111,13 +107,6 @@
         /// <param name="item">The item to be pruned.</param>
         public void PruneItem(T item)
         {
-#if UNITY_EDITOR
-            if (!EditorApplication.isPlayingOrWillChangePlaymode && EditorApplication.isPlaying)
-            {
-                return;
-            }
-#endif
-
             if (!this.OwnedItems.Remove(item))
             {
                 return;
@@ -125,11 +114,7 @@
 
             if (this.StoredItems.Remove(item))
             {
-                T[] ownedItems = this.GetOwnedItems();
-                T[] storedItems = this.GetFreeItems();
-                this.InitItemStore(this.AccessMode, this.Size);
-                this.OwnedItems = new HashSet<T>(ownedItems);
-                this.StoredItems = new HashSet<T>(storedItems);
+                this.InitItemStore(this.AccessMode, this.StoredItems);
             }
         }
 
@@ -143,6 +128,8 @@
                 GameObject.Destroy(item.gameObject);
             }
 
+            this.OwnedItems.Clear();
+            this.StoredItems.Clear();
             this.InitItemStore(this.AccessMode, this.Size);
         }
 

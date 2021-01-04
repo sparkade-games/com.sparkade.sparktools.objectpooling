@@ -11,32 +11,16 @@
     public abstract class ObjectPoolItem<T> : MonoBehaviour, IPoolable
         where T : ObjectPoolItem<T>
     {
-        /// <summary>
-        /// Gets or sets callbacks for when the object is pulled from a pool.
-        /// </summary>
-        public Action OnPullCallback { get; set; }
+        /// <inheritdoc/>
+        public Action OnPull { get; set; }
 
-        /// <summary>
-        /// Gets or sets callbacks for when the object is pushed to a pool.
-        /// </summary>
-        public Action OnPushCallback { get; set; }
+        /// <inheritdoc/>
+        public Action OnPush { get; set; }
 
         /// <summary>
         /// Gets or sets the object pool this item belongs to.
         /// </summary>
         internal ObjectPool<T> ObjectPool { get; set; }
-
-        /// <inheritdoc/>
-        public void OnPull()
-        {
-            this.OnPullCallback?.Invoke();
-        }
-
-        /// <inheritdoc/>
-        public void OnPush()
-        {
-            this.OnPushCallback?.Invoke();
-        }
 
         /// <inheritdoc/>
         public void Repool()

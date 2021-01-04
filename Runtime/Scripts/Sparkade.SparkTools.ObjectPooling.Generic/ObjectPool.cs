@@ -32,6 +32,8 @@
             this.Size = size;
             this.AccessMode = accessMode;
             this.LoadingMode = loadingMode;
+            this.OwnedItems = new HashSet<T>();
+            this.StoredItems = new HashSet<T>();
             this.InitItemStore(this.AccessMode, this.Size);
 
             if (loadingMode == PoolLoadingMode.Eager)
@@ -110,7 +112,7 @@
         public virtual T Pull()
         {
             T item = this.PullWithoutCallback();
-            (item as IPoolable)?.OnPull();
+            (item as IPoolable)?.OnPull?.Invoke();
             this.OnPull?.Invoke(item);
             return item;
         }
@@ -119,7 +121,7 @@
         public virtual void Push(T item)
         {
             this.PushWithoutCallback(item);
-            (item as IPoolable)?.OnPush();
+            (item as IPoolable)?.OnPush?.Invoke();
             this.OnPush?.Invoke(item);
         }
 
@@ -237,15 +239,27 @@
         /// </summary>
         /// <param name="mode">Access mode of the pool.</param>
         /// <param name="size">Size of the pool.</param>
-        protected virtual void InitItemStore(PoolAccessMode mode, int size)
+        protected virtual void InitItemStore(PoolAccessMode mode, int size = 0)
         {
-            this.OwnedItems = new HashSet<T>();
-            this.StoredItems = new HashSet<T>();
-
             this.ItemStore = mode switch
             {
                 PoolAccessMode.FirstIn => new QueueStore(size),
                 PoolAccessMode.LastIn => new StackStore(size),
+                _ => null,
+            };
+        }
+
+        /// <summary>
+        /// Initializes the item store for the pool.
+        /// </summary>
+        /// <param name="mode">Access mode of the pool.</param>
+        /// <param name="collection">Collection to add to the store.</param>
+        protected virtual void InitItemStore(PoolAccessMode mode, IEnumerable<T> collection)
+        {
+            this.ItemStore = mode switch
+            {
+                PoolAccessMode.FirstIn => new QueueStore(collection),
+                PoolAccessMode.LastIn => new StackStore(collection),
                 _ => null,
             };
         }
@@ -275,6 +289,15 @@
             {
             }
 
+            /// <summary>
+            /// Initializes a new instance of the <see cref="QueueStore"/> class.
+            /// </summary>
+            /// <param name="collection">Collection to add to the store.</param>
+            public QueueStore(IEnumerable<T> collection)
+                : base(collection)
+            {
+            }
+
             /// <inheritdoc/>
             public T Fetch()
             {
@@ -299,6 +322,15 @@
             /// <param name="size">Initial size of the stack.</param>
             public StackStore(int size = 0)
                 : base(size)
+            {
+            }
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="StackStore"/> class.
+            /// </summary>
+            /// <param name="collection">Collection to add to the store.</param>
+            public StackStore(IEnumerable<T> collection)
+                : base(collection)
             {
             }
 
