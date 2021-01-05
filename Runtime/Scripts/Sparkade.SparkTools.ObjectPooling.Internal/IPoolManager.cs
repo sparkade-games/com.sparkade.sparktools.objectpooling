@@ -3,6 +3,7 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
     using Sparkade.SparkTools.ObjectPooling;
     using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
 
     /// <summary>
     /// Impliments managing of multiple Unity object pools.
@@ -30,7 +31,8 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
         /// </summary>
         /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
         /// <param name="prefab">The ObjectPoolItem to be copied when creating a new object for the pool.</param>
-        public void DestroyPool<T>(T prefab)
+        /// <returns>True if the pool was destroyed, false if it did not exist.</returns>
+        public bool DestroyPool<T>(T prefab)
             where T : ObjectPoolItem<T>;
 
         /// <summary>
@@ -97,11 +99,45 @@ namespace Sparkade.SparkTools.ObjectPooling.Internal
             where T : ObjectPoolItem<T>;
 
         /// <summary>
+        /// Pushes all in use objects that are in a specific scene back into their respective pool.
+        /// </summary>
+        /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
+        /// <param name="prefab">ObjectPoolItem prefab associated with the pool.</param>
+        /// <param name="scene">The scene in use objects that should be pushed are in.</param>
+        public void RecallScene<T>(T prefab, Scene scene)
+            where T : ObjectPoolItem<T>;
+
+        /// <summary>
+        /// Pushes all in use objects that are in a specific scene back into their respective pools.
+        /// </summary>
+        /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
+        /// <param name="scene">The scene in use objects that should be pushed are in.</param>
+        public void RecallScene(Scene scene);
+
+        /// <summary>
+        /// Pushes all in use objects back into their respective pool.
+        /// </summary>
+        /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
+        /// <param name="prefab">ObjectPoolItem prefab associated with the pool.</param>
+        public void RecallAll<T>(T prefab)
+            where T : ObjectPoolItem<T>;
+
+        /// <summary>
+        /// Pushes all in use objects back into their respective pools.
+        /// </summary>
+        public void RecallAll();
+
+        /// <summary>
         /// Destroys all objects in a pool.
         /// </summary>
         /// <param name="prefab">ObjectPoolItem prefab associated with the pool.</param>
         /// <typeparam name="T">Type of ObjectPoolItem.</typeparam>
-        public void ClearPool<T>(T prefab)
+        public void Clear<T>(T prefab)
             where T : ObjectPoolItem<T>;
+
+        /// <summary>
+        /// Destroys all objects in every pool.
+        /// </summary>
+        public void Clear();
     }
 }

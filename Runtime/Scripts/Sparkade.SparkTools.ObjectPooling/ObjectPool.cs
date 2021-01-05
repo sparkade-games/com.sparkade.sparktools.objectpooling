@@ -9,7 +9,7 @@
     /// A Unity implimentation of the generic object pool.
     /// </summary>
     /// <typeparam name="T">The type of ObjectPoolItem to be stored in the pool.</typeparam>
-    public class ObjectPool<T> : Generic.ObjectPool<T>
+    public class ObjectPool<T> : Generic.ObjectPool<T>, IUnityObjectPool
         where T : ObjectPoolItem<T>
     {
         private readonly string poolParentName;
@@ -44,9 +44,7 @@
             this.poolParentName = objectPoolItem.gameObject.name;
         }
 
-        /// <summary>
-        /// Gets the GameObject all currently free objects in the pool are parented to.
-        /// </summary>
+        /// <inheritdoc/>
         public GameObject PoolParent
         {
             get
@@ -104,26 +102,30 @@
             item.transform.SetParent(this.PoolParent.transform);
         }
 
-        /// <summary>
-        /// Removes a specific object from the pool's ownership. Useful when an object is being destroyed.
-        /// </summary>
-        /// <param name="item">The item to be pruned.</param>
-        public void PruneItem(T item)
+        /// <inheritdoc/>
+        public void RecallScene(Scene scene)
         {
-            if (!this.OwnedItems.Remove(item))
+            T[] items = this.GetInUseItems();
+            for (int i = 0; i < items.Length; i += 1)
             {
-                return;
-            }
-
-            if (this.StoredItems.Remove(item))
-            {
-                this.InitItemStore(this.AccessMode, this.StoredItems);
+                if (items[i].gameObject.scene == scene)
+                {
+                    items[i].Repool();
+                }
             }
         }
 
-        /// <summary>
-        /// Destroys all objects in the pool.
-        /// </summary>
+        /// <inheritdoc/>
+        public void RecallAll()
+        {
+            T[] items = this.GetInUseItems();
+            for (int i = 0; i < items.Length; i += 1)
+            {
+                items[i].Repool();
+            }
+        }
+
+        /// <inheritdoc/>
         public void Clear()
         {
             foreach (T item in this.OwnedItems)
@@ -134,6 +136,24 @@
             this.OwnedItems.Clear();
             this.StoredItems.Clear();
             this.InitItemStore(this.AccessMode, this.Size);
+            GameObject.Destroy(this.PoolParent);
+        }
+
+        /// <summary>
+        /// Removes a specific object from the pool's ownership. Useful when an object is being destroyed.
+        /// </summary>
+        /// <param name="item">The item to be pruned.</param>
+        internal void PruneItem(T item)
+        {
+            if (!this.OwnedItems.Remove(item))
+            {
+                return;
+            }
+
+            if (this.StoredItems.Remove(item))
+            {
+                this.InitItemStore(this.AccessMode, this.StoredItems);
+            }
         }
 
         /// <inheritdoc/>

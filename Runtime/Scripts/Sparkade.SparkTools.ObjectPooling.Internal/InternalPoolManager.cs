@@ -5,6 +5,7 @@
     using Sparkade.SparkTools.ObjectPooling;
     using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
 
     /// <summary>
     /// Manages multiple object pools, automatically generating them as needed.
@@ -52,7 +53,7 @@
         }
 
         /// <inheritdoc/>
-        public void DestroyPool<T>(T prefab)
+        public bool DestroyPool<T>(T prefab)
             where T : ObjectPoolItem<T>
         {
             if (prefab == null)
@@ -62,12 +63,12 @@
 
             if (!this.HasPool(prefab))
             {
-                throw new InvalidOperationException("Pool does not exist.");
+                return false;
             }
 
             ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Clear();
-            GameObject.Destroy(((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).PoolParent);
             this.ObjectPools.Remove(prefab);
+            return true;
         }
 
         /// <inheritdoc/>
@@ -185,7 +186,59 @@
         }
 
         /// <inheritdoc/>
-        public void ClearPool<T>(T prefab)
+        public void RecallScene<T>(T prefab, Scene scene)
+            where T : ObjectPoolItem<T>
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException("prefab");
+            }
+
+            if (!this.HasPool(prefab))
+            {
+                return;
+            }
+
+            ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).RecallScene(scene);
+        }
+
+        /// <inheritdoc/>
+        public void RecallScene(Scene scene)
+        {
+            foreach (KeyValuePair<object, object> entry in this.ObjectPools)
+            {
+                ((IUnityObjectPool)entry.Value).RecallScene(scene);
+            }
+        }
+
+        /// <inheritdoc/>
+        public void RecallAll<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException("prefab");
+            }
+
+            if (!this.HasPool(prefab))
+            {
+                return;
+            }
+
+            ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).RecallAll();
+        }
+
+        /// <inheritdoc/>
+        public void RecallAll()
+        {
+            foreach (KeyValuePair<object, object> entry in this.ObjectPools)
+            {
+                ((IUnityObjectPool)entry.Value).RecallAll();
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Clear<T>(T prefab)
             where T : ObjectPoolItem<T>
         {
             if (prefab == null)
@@ -199,6 +252,15 @@
             }
 
             ((ObjectPooling.ObjectPool<T>)this.ObjectPools[prefab]).Clear();
+        }
+
+        /// <inheritdoc/>
+        public void Clear()
+        {
+            foreach (KeyValuePair<object, object> entry in this.ObjectPools)
+            {
+                ((IUnityObjectPool)entry.Value).Clear();
+            }
         }
     }
 }
