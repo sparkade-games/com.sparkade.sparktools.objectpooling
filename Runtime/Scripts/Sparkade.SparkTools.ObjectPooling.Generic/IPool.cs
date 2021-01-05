@@ -1,4 +1,4 @@
-﻿namespace Sparkade.SparkTools.ObjectPooling
+﻿namespace Sparkade.SparkTools.ObjectPooling.Generic
 {
     /// <summary>
     /// Determines the order in which a pool pulls objects from its store.
