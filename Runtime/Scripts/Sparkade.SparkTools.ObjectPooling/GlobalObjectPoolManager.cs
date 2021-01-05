@@ -6,6 +6,10 @@ namespace Sparkade.SparkTools.ObjectPooling
     using UnityEngine;
     using UnityEngine.SceneManagement;
 
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+
     /// <summary>
     /// Manages multiple GameObject pools, automatically generating them as needed. Pools exist for the life of the entire game.
     /// </summary>
@@ -133,6 +137,13 @@ namespace Sparkade.SparkTools.ObjectPooling
 
         private void OnDestroy()
         {
+#if UNITY_EDITOR
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && EditorApplication.isPlaying)
+            {
+                return;
+            }
+#endif
+
             this.Clear();
         }
     }

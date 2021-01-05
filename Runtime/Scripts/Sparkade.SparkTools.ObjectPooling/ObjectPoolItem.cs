@@ -4,6 +4,10 @@
     using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
 
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+
     /// <summary>
     /// An item to be tracked by the Unity implimentation of the generic object pool.
     /// </summary>
@@ -33,6 +37,13 @@
         /// </summary>
         protected virtual void OnDestroy()
         {
+#if UNITY_EDITOR
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && EditorApplication.isPlaying)
+            {
+                return;
+            }
+#endif
+
             this.ObjectPool.PruneItem((T)this);
         }
     }
