@@ -4,6 +4,7 @@ namespace Sparkade.SparkTools.ObjectPooling
     using Sparkade.SparkTools.ObjectPooling.Internal;
     using Sparkade.SparkTools.Singletons;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
 
     /// <summary>
     /// Manages multiple GameObject pools, automatically generating them as needed. Pools exist for the life of the scene they were created in.
@@ -33,6 +34,13 @@ namespace Sparkade.SparkTools.ObjectPooling
             where T : ObjectPoolItem<T>
         {
             this.PoolManager.CreatePool(prefab, size, accessMode, loadingMode);
+        }
+
+        /// <inheritdoc/>
+        public bool DestroyPool<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            return this.PoolManager.DestroyPool(prefab);
         }
 
         /// <inheritdoc/>
@@ -85,10 +93,47 @@ namespace Sparkade.SparkTools.ObjectPooling
         }
 
         /// <inheritdoc/>
-        public void ClearPool<T>(T prefab)
+        public void RecallScene<T>(T prefab, Scene scene)
             where T : ObjectPoolItem<T>
         {
-            this.PoolManager.ClearPool(prefab);
+            this.PoolManager.RecallScene(prefab, scene);
+        }
+
+        /// <inheritdoc/>
+        public void RecallScene(Scene scene)
+        {
+            this.PoolManager.RecallScene(scene);
+        }
+
+        /// <inheritdoc/>
+        public void RecallAll<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            this.PoolManager.RecallAll(prefab);
+        }
+
+        /// <inheritdoc/>
+        public void RecallAll()
+        {
+            this.PoolManager.RecallAll();
+        }
+
+        /// <inheritdoc/>
+        public void Clear<T>(T prefab)
+            where T : ObjectPoolItem<T>
+        {
+            this.PoolManager.Clear(prefab);
+        }
+
+        /// <inheritdoc/>
+        public void Clear()
+        {
+            this.PoolManager.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            this.Clear();
         }
     }
 }

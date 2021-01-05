@@ -76,4 +76,4 @@ public class Gun : MonoBehaviour
     }
 }
 ```
-So when our shoot button is pressed projectiles are pulled from the Projectile object pool, or created when needed. Of course you'd also want the to be pushed back into the pool at some point, if they hit a wall for instance.
+So when our shoot button is pressed projectiles are pulled from the Projectile object pool, or created when needed. Of course you'd also want the projectile to be pushed back into the pool at some point, if they hit a wall for instance.
