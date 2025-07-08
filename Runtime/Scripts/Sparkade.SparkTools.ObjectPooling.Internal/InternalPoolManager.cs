@@ -44,7 +44,7 @@
             }
 
             ObjectPooling.ObjectPool<T> pool = new ObjectPooling.ObjectPool<T>((T)prefab, size, accessMode, loadingMode);
-            pool.OnPoolParentCreated += (obj) =>
+            pool.PoolParentCreated += (obj) =>
             {
                 obj.transform.SetParent(this.PoolParent.transform);
             };

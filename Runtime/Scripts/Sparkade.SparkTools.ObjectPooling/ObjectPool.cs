@@ -53,7 +53,7 @@
                 {
                     this.poolParent = new GameObject($"{this.poolParentName} Pool");
                     this.poolParent.SetActive(false);
-                    this.OnPoolParentCreated?.Invoke(this.poolParent);
+                    this.PoolParentCreated?.Invoke(this.poolParent);
                 }
 
                 return this.poolParent;
@@ -63,14 +63,14 @@
         /// <summary>
         /// Gets or sets a callback for when the pool's parent object is created.
         /// </summary>
-        public Action<GameObject> OnPoolParentCreated { get; set; }
+        public Action<GameObject> PoolParentCreated { get; set; }
 
         /// <inheritdoc/>
         public override T Pull()
         {
             T item = this.PullWithoutCallback();
-            item.OnPull?.Invoke();
-            this.OnPull?.Invoke(item);
+            item.Pulled?.Invoke();
+            this.Pulled?.Invoke(item);
             return item;
         }
 
@@ -78,8 +78,8 @@
         public override void Push(T item)
         {
             this.PushWithoutCallback(item);
-            item.OnPush?.Invoke();
-            this.OnPush?.Invoke(item);
+            item.Pushed?.Invoke();
+            this.Pushed?.Invoke(item);
         }
 
         /// <inheritdoc/>
