@@ -16,10 +16,10 @@
         where T : ObjectPoolItem<T>
     {
         /// <inheritdoc/>
-        public Action OnPull { get; set; }
+        public Action Pulled { get; set; }
 
         /// <inheritdoc/>
-        public Action OnPush { get; set; }
+        public Action Pushed { get; set; }
 
         /// <summary>
         /// Gets or sets the object pool this item belongs to.

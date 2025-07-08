@@ -81,12 +81,12 @@
         /// <summary>
         /// Gets or sets a callback for when an object is pulled.
         /// </summary>
-        public Action<T> OnPull { get; set; }
+        public Action<T> Pulled { get; set; }
 
         /// <summary>
         /// Gets or sets a callback for when an object is pushed.
         /// </summary>
-        public Action<T> OnPush { get; set; }
+        public Action<T> Pushed { get; set; }
 
         /// <summary>
         /// Gets or sets a method for creating an object for the pool.
@@ -112,8 +112,8 @@
         public virtual T Pull()
         {
             T item = this.PullWithoutCallback();
-            (item as IPoolable)?.OnPull?.Invoke();
-            this.OnPull?.Invoke(item);
+            (item as IPoolable)?.Pulled?.Invoke();
+            this.Pulled?.Invoke(item);
             return item;
         }
 
@@ -121,8 +121,8 @@
         public virtual void Push(T item)
         {
             this.PushWithoutCallback(item);
-            (item as IPoolable)?.OnPush?.Invoke();
-            this.OnPush?.Invoke(item);
+            (item as IPoolable)?.Pushed?.Invoke();
+            this.Pushed?.Invoke(item);
         }
 
         /// <summary>
