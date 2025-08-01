@@ -8,9 +8,9 @@ namespace Sparkade.SparkTools.ObjectPooling
     using UnityEngine.SceneManagement;
 
     /// <summary>
-    /// Manages multiple GameObject pools, automatically generating them as needed. Pools exist for the life of the entire game.
+    /// Manages multiple GameObject pools, automatically generating them as needed. Pools exist for the life of the scene they were created in.
     /// </summary>
-    public class ObjectPoolManager : Singleton<ObjectPoolManager>, IPoolManager
+    public class SceneObjectPoolManager : SceneSingleton<SceneObjectPoolManager>, IPoolManager
     {
         private Dictionary<PoolableObject, ObjectPool> objectPools = new Dictionary<PoolableObject, ObjectPool>();
 

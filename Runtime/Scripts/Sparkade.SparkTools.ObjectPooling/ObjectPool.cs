@@ -1,6 +1,8 @@
 ﻿namespace Sparkade.SparkTools.ObjectPooling
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using Sparkade.SparkTools.ObjectPooling.Generic;
     using UnityEngine;
     using UnityEngine.SceneManagement;
@@ -9,83 +11,65 @@
     /// A Unity implimentation of the generic object pool.
     /// </summary>
     /// <typeparam name="T">The type of ObjectPoolItem to be stored in the pool.</typeparam>
-    public class ObjectPool<T> : Generic.ObjectPool<T>, IUnityObjectPool
-        where T : ObjectPoolItem<T>
+    public class ObjectPool : MonoBehaviour, IPool<PoolableObject>
     {
-        private readonly string poolParentName;
-        private GameObject poolParent;
+        [SerializeField]
+        private PoolableObject prefab;
+
+        [SerializeField]
+        private int size = 0;
+
+        [SerializeField]
+        private PoolAccessMode accessMode = PoolAccessMode.LastIn;
+
+        [SerializeField]
+        private PoolLoadingMode loadingMode = PoolLoadingMode.Eager;
+
+        private ObjectPool<PoolableObject> pool;
+        private bool initialized;
+
+        /// <inheritdoc/>
+        public Action<PoolableObject> Pulled { get; set; }
+
+        /// <inheritdoc/>
+        public Action<PoolableObject> Pushed { get; set; }
+
+        /// <inheritdoc/>
+        public Action<PoolableObject> Pruned { get; set; }
+
+        /// <inheritdoc/>
+        public int Size => this.size;
+
+        /// <inheritdoc/>
+        public PoolAccessMode AccessMode => this.accessMode;
+
+        /// <inheritdoc/>
+        public PoolLoadingMode LoadingMode => this.loadingMode;
+
+        /// <inheritdoc/>
+        public int CountAll => this.initialized ? this.pool.CountAll : 0;
+
+        /// <inheritdoc/>
+        public int CountInactive => this.initialized ? this.pool.CountInactive : 0;
+
+        /// <inheritdoc/>
+        public int CountActive => this.initialized ? this.pool.CountActive : 0;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
+        /// Gets a value indicating whether the object pool has been initialized.
         /// </summary>
-        /// <param name="objectPoolItem">The ObjectPoolItem to be copied when creating a new object for the pool.</param>
-        /// <param name="size">The target size of the pool. The pool will expand beyond this size if needed.</param>
-        /// <param name="accessMode">Determines the order in which a pool pulls objects from its store.</param>
-        /// <param name="loadingMode">Determines how a pool reaches its size.</param>
-        public ObjectPool(
-            T objectPoolItem,
-            int size = 0,
-            PoolAccessMode accessMode = PoolAccessMode.LastIn,
-            PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
-            : base(
-                    (objectPool) =>
-                    {
-                        return GameObject.Instantiate(objectPoolItem.gameObject).GetComponent<T>();
-                    },
-                    size,
-                    accessMode,
-                    loadingMode)
+        public bool IsInitialized => this.initialized;
+
+        /// <inheritdoc/>
+        public PoolableObject Pull()
         {
-            if (objectPoolItem == null)
+            if (!this.initialized)
             {
-                throw new ArgumentNullException("objectPoolItem");
+                throw new InvalidOperationException("The pool is not initialized.");
             }
 
-            this.poolParentName = objectPoolItem.gameObject.name;
-        }
-
-        /// <inheritdoc/>
-        public GameObject PoolParent
-        {
-            get
-            {
-                if (this.poolParent == null)
-                {
-                    this.poolParent = new GameObject($"{this.poolParentName} Pool");
-                    this.poolParent.SetActive(false);
-                    this.PoolParentCreated?.Invoke(this.poolParent);
-                }
-
-                return this.poolParent;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a callback for when the pool's parent object is created.
-        /// </summary>
-        public Action<GameObject> PoolParentCreated { get; set; }
-
-        /// <inheritdoc/>
-        public override T Pull()
-        {
-            T item = this.PullWithoutCallback();
-            item.Pulled?.Invoke();
-            this.Pulled?.Invoke(item);
-            return item;
-        }
-
-        /// <inheritdoc/>
-        public override void Push(T item)
-        {
-            this.PushWithoutCallback(item);
-            item.Pushed?.Invoke();
-            this.Pushed?.Invoke(item);
-        }
-
-        /// <inheritdoc/>
-        public override T PullWithoutCallback()
-        {
-            T item = base.PullWithoutCallback();
+            PoolableObject item = this.pool.Pull();
+            item.ObjectPool = this;
             item.transform.SetParent(null);
             if (item.gameObject.scene != SceneManager.GetActiveScene())
             {
@@ -95,73 +79,203 @@
             return item;
         }
 
-        /// <inheritdoc/>
-        public override void PushWithoutCallback(T item)
+        /// <summary>
+        /// Returns an item cast as a type from the pool. If no items are currently inactive, one will be created.
+        /// </summary>
+        /// <typeparam name="T">The type of item.</typeparam>
+        /// <returns>An item pulled from the pool.</returns>
+        public T Pull<T>()
+            where T : PoolableObject
         {
-            base.PushWithoutCallback(item);
-            item.transform.SetParent(this.PoolParent.transform);
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            if (typeof(T) != this.prefab.GetType())
+            {
+                throw new ArgumentException($"The pool does not contain items of this type.", "T");
+            }
+
+            return (T)this.Pull();
         }
 
         /// <inheritdoc/>
+        public void Push(PoolableObject item)
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            this.pool.Push(item);
+            item.transform.SetParent(this.transform);
+        }
+
+        /// <inheritdoc/>
+        public void Prune(PoolableObject item)
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            this.pool.Prune(item);
+        }
+
+        /// <inheritdoc/>
+        public bool GetOwnsItem(PoolableObject item)
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            return this.pool.GetOwnsItem(item);
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<PoolableObject> GetAllItems()
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            return this.pool.GetAllItems();
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<PoolableObject> GetInactiveItems()
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            return this.pool.GetInactiveItems();
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<PoolableObject> GetActiveItems()
+        {
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            return this.pool.GetActiveItems();
+        }
+
+        /// <summary>
+        /// Destroys all items in the pool.
+        /// </summary>
+        public void Clear()
+        {
+            PoolableObject[] items = this.GetAllItems().ToArray();
+            for (int i = 0; i < items.Length; i += 1)
+            {
+                GameObject.Destroy(items[i].gameObject);
+            }
+
+            this.pool.Clear();
+        }
+
+        /// <summary>
+        /// Pushes all in use items that are in a specific scene back into the pool.
+        /// </summary>
+        /// <param name="scene">The scene in use items that should be pushed are in.</param>
         public void RecallScene(Scene scene)
         {
-            T[] items = this.GetInUseItems();
+            PoolableObject[] items = this.GetActiveItems().ToArray();
             for (int i = 0; i < items.Length; i += 1)
             {
                 if (items[i].gameObject.scene == scene)
                 {
-                    items[i].Repool();
+                    this.Push(items[i]);
                 }
             }
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Pushes all in use items back into the pool.
+        /// </summary>
         public void RecallAll()
         {
-            T[] items = this.GetInUseItems();
+            PoolableObject[] items = this.GetActiveItems().ToArray();
             for (int i = 0; i < items.Length; i += 1)
             {
-                items[i].Repool();
+                this.Push(items[i]);
             }
-        }
-
-        /// <inheritdoc/>
-        public void Clear()
-        {
-            foreach (T item in this.OwnedItems)
-            {
-                GameObject.Destroy(item.gameObject);
-            }
-
-            this.OwnedItems.Clear();
-            this.StoredItems.Clear();
-            this.InitItemStore(this.AccessMode, this.Size);
-            GameObject.Destroy(this.PoolParent);
         }
 
         /// <summary>
-        /// Removes a specific object from the pool's ownership. Useful when an object is being destroyed.
+        /// Initializes the object pool. This is only required if the prefab was null on Awake.
         /// </summary>
-        /// <param name="item">The item to be pruned.</param>
-        internal void PruneItem(T item)
+        /// <param name="prefab">The pool item prefab.</param>
+        /// <param name="size">The target size of the pool. The pool will expand beyond this size if needed.</param>
+        /// <param name="accessMode">Determines the order in which a pool pulls items from its store.</param>
+        /// <param name="loadingMode">Determines how a pool reaches its size.</param>
+        public void Init(PoolableObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
         {
-            if (!this.OwnedItems.Remove(item))
+            if (prefab == null)
             {
-                return;
+                throw new ArgumentNullException("prefab");
             }
 
-            if (this.StoredItems.Remove(item))
+            if (this.initialized)
             {
-                this.InitItemStore(this.AccessMode, this.StoredItems);
+                throw new InvalidOperationException("The pool is already initialized.");
+            }
+
+            this.prefab = prefab;
+            this.size = size;
+            this.accessMode = accessMode;
+            this.loadingMode = loadingMode;
+            this.InitInternal();
+        }
+
+        private void InitInternal()
+        {
+            this.pool = new ObjectPool<PoolableObject>(
+                (objectPool) =>
+                {
+                    return GameObject.Instantiate(this.prefab.gameObject).GetComponent<PoolableObject>();
+                },
+                this.size,
+                this.accessMode,
+                this.loadingMode);
+
+            foreach (PoolableObject item in this.pool.GetInactiveItems())
+            {
+                item.transform.SetParent(this.transform);
+                item.ObjectPool = this;
+            }
+
+            this.initialized = true;
+        }
+
+        private void Awake()
+        {
+            if (this.prefab != null)
+            {
+                this.InitInternal();
             }
         }
 
-        /// <inheritdoc/>
-        protected override T CreateItem()
+        private void OnDestroy()
         {
-            T item = base.CreateItem();
-            item.ObjectPool = this;
-            return item;
+#if UNITY_EDITOR
+            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && UnityEditor.EditorApplication.isPlaying)
+            {
+                return;
+            }
+#endif
+
+            if (this.initialized)
+            {
+                this.Clear();
+            }
         }
     }
 }

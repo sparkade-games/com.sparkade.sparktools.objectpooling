@@ -7,15 +7,15 @@
     /// <summary>
     /// A completely generic object pool.
     /// </summary>
-    /// <typeparam name="T">The type of object to be stored in the pool.</typeparam>
+    /// <typeparam name="T">The type of item to be stored in the pool.</typeparam>
     public class ObjectPool<T> : IPool<T>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ObjectPool{T}"/> class.
         /// </summary>
-        /// <param name="factory">A method which takes in a pool and returns an object for that pool.</param>
+        /// <param name="factory">A method which takes in a pool and returns an item for that pool.</param>
         /// <param name="size">The target size of the pool. The pool will expand beyond this size if needed.</param>
-        /// <param name="accessMode">Determines the order in which a pool pulls objects from its store.</param>
+        /// <param name="accessMode">Determines the order in which a pool pulls items from its store.</param>
         /// <param name="loadingMode">Determines how a pool reaches its size.</param>
         public ObjectPool(
             Func<ObjectPool<T>, T> factory,
@@ -43,31 +43,31 @@
         }
 
         /// <summary>
-        /// Impliments a generic store for objects that can be added to and retrieved from.
+        /// Impliments a generic store for items that can be added to and retrieved from.
         /// </summary>
         protected interface IItemStore
         {
             /// <summary>
-            /// Removes an object from the store and returns it.
+            /// Removes an item from the store and returns it.
             /// </summary>
-            /// <returns>The object removed form the store.</returns>
+            /// <returns>The item removed form the store.</returns>
             T Fetch();
 
             /// <summary>
-            /// Places an object into the store.
+            /// Places an item into the store.
             /// </summary>
-            /// <param name="item">The object to be stored.</param>
+            /// <param name="item">The item to be stored.</param>
             void Store(T item);
         }
 
         /// <inheritdoc/>
-        public int Count => this.OwnedItems.Count;
+        public Action<T> Pulled { get; set; }
 
         /// <inheritdoc/>
-        public int FreeCount => this.StoredItems.Count;
+        public Action<T> Pushed { get; set; }
 
         /// <inheritdoc/>
-        public int InUseCount => this.Count - this.FreeCount;
+        public Action<T> Pruned { get; set; }
 
         /// <inheritdoc/>
         public int Size { get; }
@@ -78,18 +78,17 @@
         /// <inheritdoc/>
         public PoolLoadingMode LoadingMode { get; }
 
-        /// <summary>
-        /// Gets or sets a callback for when an object is pulled.
-        /// </summary>
-        public Action<T> Pulled { get; set; }
+        /// <inheritdoc/>
+        public int CountAll => this.OwnedItems.Count;
+
+        /// <inheritdoc/>
+        public int CountInactive => this.StoredItems.Count;
+
+        /// <inheritdoc/>
+        public int CountActive => this.CountAll - this.CountInactive;
 
         /// <summary>
-        /// Gets or sets a callback for when an object is pushed.
-        /// </summary>
-        public Action<T> Pushed { get; set; }
-
-        /// <summary>
-        /// Gets or sets a method for creating an object for the pool.
+        /// Gets or sets a method for creating an item for the pool.
         /// </summary>
         protected Func<ObjectPool<T>, T> Factory { get; set; }
 
@@ -99,19 +98,28 @@
         protected IItemStore ItemStore { get; set; }
 
         /// <summary>
-        /// Gets or sets a collection of all objects owned by the pool.
+        /// Gets or sets a collection of all items owned by the pool.
         /// </summary>
         protected HashSet<T> OwnedItems { get; set; }
 
         /// <summary>
-        /// Gets or sets a collection of all objects currently in the pool.
+        /// Gets or sets a collection of all items currently in the pool.
         /// </summary>
         protected HashSet<T> StoredItems { get; set; }
 
         /// <inheritdoc/>
         public virtual T Pull()
         {
-            T item = this.PullWithoutCallback();
+            T item;
+            if (this.CountInactive == 0 || (this.LoadingMode == PoolLoadingMode.Lazy && this.CountAll < this.Size))
+            {
+                item = this.CreateItem();
+            }
+            else
+            {
+                item = this.FetchItem();
+            }
+
             (item as IPoolable)?.Pulled?.Invoke();
             this.Pulled?.Invoke(item);
             return item;
@@ -119,33 +127,6 @@
 
         /// <inheritdoc/>
         public virtual void Push(T item)
-        {
-            this.PushWithoutCallback(item);
-            (item as IPoolable)?.Pushed?.Invoke();
-            this.Pushed?.Invoke(item);
-        }
-
-        /// <summary>
-        /// Pulls a given object without triggering the IPoolable 'OnPull' callback.
-        /// </summary>
-        /// <returns>The object pulled.</returns>
-        public virtual T PullWithoutCallback()
-        {
-            if (this.FreeCount == 0 || (this.LoadingMode == PoolLoadingMode.Lazy && this.Count < this.Size))
-            {
-                return this.CreateItem();
-            }
-            else
-            {
-                return this.FetchItem();
-            }
-        }
-
-        /// <summary>
-        /// Pushes a given object without triggering the IPoolable 'OnPush' callback.
-        /// </summary>
-        /// <param name="item">The object to be pushed.</param>
-        public virtual void PushWithoutCallback(T item)
         {
             if (item == null)
             {
@@ -163,49 +144,63 @@
             }
 
             this.StoreItem(item);
+            (item as IPoolable)?.Pushed?.Invoke();
+            this.Pushed?.Invoke(item);
         }
 
-        /// <summary>
-        /// Gets whether or not an object is owned by this pool.
-        /// </summary>
-        /// <param name="item">The object to check.</param>
-        /// <returns>True if the object belongs to this pool, false if it does not.</returns>
+        /// <inheritdoc/>
+        public virtual void Prune(T item)
+        {
+            if (!this.OwnedItems.Remove(item))
+            {
+                return;
+            }
+
+            if (this.StoredItems.Remove(item))
+            {
+                this.InitItemStore(this.AccessMode, this.StoredItems);
+            }
+
+            (item as IPoolable)?.Pruned?.Invoke();
+            this.Pruned?.Invoke(item);
+        }
+
+        /// <inheritdoc/>
         public bool GetOwnsItem(T item)
         {
             return this.OwnedItems.Contains(item);
         }
 
-        /// <summary>
-        /// Gets all objects owned by the pool.
-        /// </summary>
-        /// <returns>An array of all objects owned by the pool.</returns>
-        public T[] GetOwnedItems()
+        /// <inheritdoc/>
+        public IEnumerable<T> GetAllItems()
         {
-            return this.OwnedItems.ToArray();
+            return this.OwnedItems;
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<T> GetInactiveItems()
+        {
+            return this.StoredItems;
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<T> GetActiveItems()
+        {
+            return this.OwnedItems.Except(this.StoredItems);
+        }
+
+        /// <inheritdoc/>
+        public void Clear()
+        {
+            this.OwnedItems.Clear();
+            this.StoredItems.Clear();
+            this.InitItemStore(this.AccessMode, this.Size);
         }
 
         /// <summary>
-        /// Gets all objects currently stored in the pool.
+        /// Creates a new item and places it in the item store.
         /// </summary>
-        /// <returns>An array of all objects currently stored in the pool.</returns>
-        public T[] GetFreeItems()
-        {
-            return this.StoredItems.ToArray();
-        }
-
-        /// <summary>
-        /// Gets all objects owned by the pool that are not currently stored in it.
-        /// </summary>
-        /// <returns>An array of all objects owned by the pool that are not currently stored in it.</returns>
-        public T[] GetInUseItems()
-        {
-            return this.OwnedItems.Except(this.StoredItems).ToArray();
-        }
-
-        /// <summary>
-        /// Creates a new object and places it in the item store.
-        /// </summary>
-        /// <returns>The object created.</returns>
+        /// <returns>The item created.</returns>
         protected virtual T CreateItem()
         {
             T item = this.Factory(this);
@@ -214,9 +209,9 @@
         }
 
         /// <summary>
-        /// Removes an object from the item store and returns it.
+        /// Removes an item from the item store and returns it.
         /// </summary>
-        /// <returns>The object removed.</returns>
+        /// <returns>The item removed.</returns>
         protected virtual T FetchItem()
         {
             T item = this.ItemStore.Fetch();
@@ -225,9 +220,9 @@
         }
 
         /// <summary>
-        /// Stores an object in the item store.
+        /// Stores an item in the item store.
         /// </summary>
-        /// <param name="item">The object to be stored.</param>
+        /// <param name="item">The item to be stored.</param>
         protected virtual void StoreItem(T item)
         {
             this.ItemStore.Store(item);
@@ -265,7 +260,7 @@
         }
 
         /// <summary>
-        /// Creates enough objects for the pool to reach its size and places them in the item store.
+        /// Creates enough items for the pool to reach its size and places them in the item store.
         /// </summary>
         protected virtual void PreloadItems()
         {
