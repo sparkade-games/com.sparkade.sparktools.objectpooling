@@ -1,0 +1,58 @@
+﻿namespace Sparkade.SparkTools.ObjectPooling
+{
+    using System;
+    using Sparkade.SparkTools.ObjectPooling.Generic;
+    using UnityEngine;
+
+    /// <summary>
+    /// An object that can be pooled.
+    /// </summary>
+    public class PoolableObject : MonoBehaviour, IPoolable
+    {
+        /// <inheritdoc/>
+        public Action Pulled { get; set; }
+
+        /// <inheritdoc/>
+        public Action Pushed { get; set; }
+
+        /// <inheritdoc/>
+        public Action Pruned { get; set; }
+
+        /// <summary>
+        /// Gets the object pool this item belongs to.
+        /// </summary>
+        public ObjectPool ObjectPool { get; internal set; }
+
+        /// <inheritdoc/>
+        public void Repool()
+        {
+            this.ObjectPool.Push(this);
+        }
+
+        /// <summary>
+        /// Override this if you need to use Awake, but be sure to call the base first.
+        /// </summary>
+        protected virtual void Awake()
+        {
+            if (this.GetComponents<PoolableObject>().Length > 1)
+            {
+                Debug.LogWarning("There should never be more than one PoolableObject component on a GameObject.");
+            }
+        }
+
+        /// <summary>
+        /// Override this if you need to use OnDestroy, but be sure to call the base or pruning won't occur.
+        /// </summary>
+        protected virtual void OnDestroy()
+        {
+#if UNITY_EDITOR
+            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && UnityEditor.EditorApplication.isPlaying)
+            {
+                return;
+            }
+#endif
+
+            this.ObjectPool.Prune(this);
+        }
+    }
+}
