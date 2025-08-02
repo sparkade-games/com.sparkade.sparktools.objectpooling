@@ -23,9 +23,13 @@
         /// <inheritdoc/>
         public void Repool()
         {
-            if (this.ObjectPool != null)
+            if (this.ObjectPool != null && this.ObjectPool.GetOwnsItem(this))
             {
                 this.ObjectPool.Push(this);
+            }
+            else
+            {
+                Destroy(this.gameObject);
             }
         }
 

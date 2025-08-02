@@ -19,6 +19,7 @@
 
         /// <summary>
         /// Returns the item back to the object pool it belongs to.
+        /// If the pool no longer exists, the item is destroyed instead.
         /// </summary>
         void Repool();
     }
