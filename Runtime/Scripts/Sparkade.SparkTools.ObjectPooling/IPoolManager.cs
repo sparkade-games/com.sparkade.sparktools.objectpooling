@@ -16,7 +16,8 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <param name="size">The target size of the pool. The pool will expand beyond this size if needed.</param>
         /// <param name="accessMode">Determines the order in which a pool pulls items from its store.</param>
         /// <param name="loadingMode">Determines how a pool reaches its size.</param>
-        void CreatePool(PoolableObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager);
+        /// <returns>The object pool that was created.</returns>
+        ObjectPool CreatePool(PoolableObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager);
 
         /// <summary>
         /// Destroys an object pool and all its managed items.
@@ -55,18 +56,11 @@ namespace Sparkade.SparkTools.ObjectPooling
             where T : PoolableObject;
 
         /// <summary>
-        /// Places an item back into a pool. If no pool exists, one will be created.
+        /// Places an item back into a pool.
         /// </summary>
         /// <param name="prefab">The prefab associated with the pool.</param>
         /// <param name="item">The item to be pushed into the pool.</param>
         void Push(PoolableObject prefab, PoolableObject item);
-
-        /// <summary>
-        /// Removes an item from a pool.
-        /// </summary>
-        /// <param name="prefab">The prefab associated with the pool.</param>
-        /// <param name="item">The item to be removed from the pool.</param>
-        void Prune(PoolableObject prefab, PoolableObject item);
 
         /// <summary>
         /// Gets how many items a pool manages.

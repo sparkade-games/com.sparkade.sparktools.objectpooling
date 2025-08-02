@@ -67,9 +67,6 @@
         public Action<T> Pushed { get; set; }
 
         /// <inheritdoc/>
-        public Action<T> Pruned { get; set; }
-
-        /// <inheritdoc/>
         public int Size { get; }
 
         /// <inheritdoc/>
@@ -149,23 +146,6 @@
         }
 
         /// <inheritdoc/>
-        public virtual void Prune(T item)
-        {
-            if (!this.OwnedItems.Remove(item))
-            {
-                return;
-            }
-
-            if (this.StoredItems.Remove(item))
-            {
-                this.InitItemStore(this.AccessMode, this.StoredItems);
-            }
-
-            (item as IPoolable)?.Pruned?.Invoke();
-            this.Pruned?.Invoke(item);
-        }
-
-        /// <inheritdoc/>
         public bool GetOwnsItem(T item)
         {
             return this.OwnedItems.Contains(item);
@@ -190,7 +170,7 @@
         }
 
         /// <inheritdoc/>
-        public void Clear()
+        public virtual void Clear()
         {
             this.OwnedItems.Clear();
             this.StoredItems.Clear();

@@ -52,11 +52,6 @@
         Action<T> Pushed { get; set; }
 
         /// <summary>
-        /// Gets or sets a callback for when an item is pruned.
-        /// </summary>
-        Action<T> Pruned { get; set; }
-
-        /// <summary>
         /// Gets the target size of the pool. The pool will expand beyond this size if needed.
         /// </summary>
         int Size { get; }
@@ -97,12 +92,6 @@
         /// </summary>
         /// <param name="item">The item to push into the pool.</param>
         void Push(T item);
-
-        /// <summary>
-        /// Removes an item from the pool.
-        /// </summary>
-        /// <param name="item">The item to be removed from the pool.</param>
-        void Prune(T item);
 
         /// <summary>
         /// Gets whether or not an item is owned by this pool.
