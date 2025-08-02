@@ -25,7 +25,7 @@
         [SerializeField]
         private PoolLoadingMode loadingMode = PoolLoadingMode.Eager;
 
-        private ObjectPool<PoolableObject> pool;
+        private InternalObjectPool pool;
         private bool initialized;
 
         /// <inheritdoc/>
@@ -33,9 +33,6 @@
 
         /// <inheritdoc/>
         public Action<PoolableObject> Pushed { get; set; }
-
-        /// <inheritdoc/>
-        public Action<PoolableObject> Pruned { get; set; }
 
         /// <inheritdoc/>
         public int Size => this.size;
@@ -68,15 +65,7 @@
                 throw new InvalidOperationException("The pool is not initialized.");
             }
 
-            PoolableObject item = this.pool.Pull();
-            item.ObjectPool = this;
-            item.transform.SetParent(null);
-            if (item.gameObject.scene != SceneManager.GetActiveScene())
-            {
-                SceneManager.MoveGameObjectToScene(item.gameObject, SceneManager.GetActiveScene());
-            }
-
-            return item;
+            return this.pool.Pull();
         }
 
         /// <summary>
@@ -109,18 +98,6 @@
             }
 
             this.pool.Push(item);
-            item.transform.SetParent(this.transform);
-        }
-
-        /// <inheritdoc/>
-        public void Prune(PoolableObject item)
-        {
-            if (!this.initialized)
-            {
-                throw new InvalidOperationException("The pool is not initialized.");
-            }
-
-            this.pool.Prune(item);
         }
 
         /// <inheritdoc/>
@@ -128,7 +105,7 @@
         {
             if (!this.initialized)
             {
-                throw new InvalidOperationException("The pool is not initialized.");
+                return false;
             }
 
             return this.pool.GetOwnsItem(item);
@@ -139,7 +116,7 @@
         {
             if (!this.initialized)
             {
-                throw new InvalidOperationException("The pool is not initialized.");
+                return Enumerable.Empty<PoolableObject>();
             }
 
             return this.pool.GetAllItems();
@@ -150,7 +127,7 @@
         {
             if (!this.initialized)
             {
-                throw new InvalidOperationException("The pool is not initialized.");
+                return Enumerable.Empty<PoolableObject>();
             }
 
             return this.pool.GetInactiveItems();
@@ -161,7 +138,7 @@
         {
             if (!this.initialized)
             {
-                throw new InvalidOperationException("The pool is not initialized.");
+                return Enumerable.Empty<PoolableObject>();
             }
 
             return this.pool.GetActiveItems();
@@ -172,23 +149,22 @@
         /// </summary>
         public void Clear()
         {
-            PoolableObject[] items = this.GetAllItems().ToArray();
-            for (int i = 0; i < items.Length; i += 1)
+            if (!this.initialized)
             {
-                GameObject.Destroy(items[i].gameObject);
+                return;
             }
 
             this.pool.Clear();
         }
 
         /// <summary>
-        /// Pushes all in use items that are in a specific scene back into the pool.
+        /// Pushes all active items that are in a specific scene back into the pool.
         /// </summary>
         /// <param name="scene">The scene in use items that should be pushed are in.</param>
         public void RecallScene(Scene scene)
         {
-            PoolableObject[] items = this.GetActiveItems().ToArray();
-            for (int i = 0; i < items.Length; i += 1)
+            List<PoolableObject> items = new List<PoolableObject>(this.GetActiveItems());
+            for (int i = 0; i < items.Count; i += 1)
             {
                 if (items[i].gameObject.scene == scene)
                 {
@@ -202,8 +178,8 @@
         /// </summary>
         public void RecallAll()
         {
-            PoolableObject[] items = this.GetActiveItems().ToArray();
-            for (int i = 0; i < items.Length; i += 1)
+            List<PoolableObject> items = new List<PoolableObject>(this.GetActiveItems());
+            for (int i = 0; i < items.Count; i += 1)
             {
                 this.Push(items[i]);
             }
@@ -235,13 +211,33 @@
             this.InitInternal();
         }
 
+        /// <summary>
+        /// Removes an item from the pool.
+        /// </summary>
+        /// <param name="item">The item to remove.</param>
+        internal void RemoveItem(PoolableObject item)
+        {
+            if (item == null)
+            {
+                throw new ArgumentNullException("item");
+            }
+
+            if (!this.initialized)
+            {
+                throw new InvalidOperationException("The pool is not initialized.");
+            }
+
+            this.pool.RemoveItem(item);
+        }
+
         private void InitInternal()
         {
-            this.pool = new ObjectPool<PoolableObject>(
+            this.pool = new InternalObjectPool(
                 (objectPool) =>
                 {
                     return GameObject.Instantiate(this.prefab.gameObject).GetComponent<PoolableObject>();
                 },
+                this,
                 this.size,
                 this.accessMode,
                 this.loadingMode);
@@ -265,13 +261,6 @@
 
         private void OnDestroy()
         {
-#if UNITY_EDITOR
-            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && UnityEditor.EditorApplication.isPlaying)
-            {
-                return;
-            }
-#endif
-
             if (this.initialized)
             {
                 this.Clear();

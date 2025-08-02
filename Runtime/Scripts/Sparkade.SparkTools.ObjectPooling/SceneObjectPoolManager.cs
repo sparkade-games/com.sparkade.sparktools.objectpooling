@@ -15,7 +15,7 @@ namespace Sparkade.SparkTools.ObjectPooling
         private Dictionary<PoolableObject, ObjectPool> objectPools = new Dictionary<PoolableObject, ObjectPool>();
 
         /// <inheritdoc/>
-        public void CreatePool(PoolableObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
+        public ObjectPool CreatePool(PoolableObject prefab, int size = 0, PoolAccessMode accessMode = PoolAccessMode.LastIn, PoolLoadingMode loadingMode = PoolLoadingMode.Eager)
         {
             if (prefab == null)
             {
@@ -32,6 +32,7 @@ namespace Sparkade.SparkTools.ObjectPooling
             ObjectPool pool = poolGameObject.AddComponent<ObjectPool>();
             pool.Init(prefab);
             this.objectPools[prefab] = pool;
+            return pool;
         }
 
         /// <inheritdoc/>
@@ -55,6 +56,11 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <inheritdoc/>
         public ObjectPool GetPool(PoolableObject prefab)
         {
+            if (prefab == null)
+            {
+                throw new ArgumentNullException("prefab");
+            }
+
             if (!this.HasPool(prefab))
             {
                 return null;
@@ -77,14 +83,7 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <inheritdoc/>
         public IEnumerable<ObjectPool> GetObjectPools()
         {
-            foreach (KeyValuePair<PoolableObject, ObjectPool> entry in this.objectPools)
-            {
-                if (entry.Value == null)
-                {
-                    this.objectPools.Remove(entry.Key);
-                }
-            }
-
+            this.RemoveNullObjectPools();
             return this.objectPools.Values;
         }
 
@@ -120,31 +119,10 @@ namespace Sparkade.SparkTools.ObjectPooling
 
             if (!this.HasPool(prefab))
             {
-                this.CreatePool(prefab);
+                throw new InvalidOperationException("Item does not belong to any managed pool.");
             }
 
             this.objectPools[prefab].Push(item);
-        }
-
-        /// <inheritdoc/>
-        public void Prune(PoolableObject prefab, PoolableObject item)
-        {
-            if (prefab == null)
-            {
-                throw new ArgumentNullException("prefab");
-            }
-
-            if (item == null)
-            {
-                throw new ArgumentNullException("item");
-            }
-
-            if (!this.HasPool(prefab))
-            {
-                return;
-            }
-
-            this.objectPools[prefab].Prune(item);
         }
 
         /// <inheritdoc/>
@@ -214,9 +192,10 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <inheritdoc/>
         public void Clear()
         {
-            foreach (ObjectPool pool in this.objectPools.Values)
+            this.RemoveNullObjectPools();
+            foreach (ObjectPool objectPool in this.objectPools.Values)
             {
-                pool.Clear();
+                objectPool.Clear();
             }
         }
 
@@ -239,15 +218,10 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <inheritdoc/>
         public void RecallScene(Scene scene)
         {
-            foreach (KeyValuePair<PoolableObject, ObjectPool> entry in this.objectPools)
+            this.RemoveNullObjectPools();
+            foreach (ObjectPool objectPool in this.objectPools.Values)
             {
-                if (entry.Value == null)
-                {
-                    this.objectPools.Remove(entry.Key);
-                    continue;
-                }
-
-                entry.Value.RecallScene(scene);
+                objectPool.RecallScene(scene);
             }
         }
 
@@ -270,28 +244,37 @@ namespace Sparkade.SparkTools.ObjectPooling
         /// <inheritdoc/>
         public void RecallAll()
         {
+            this.RemoveNullObjectPools();
+            foreach (ObjectPool objectPool in this.objectPools.Values)
+            {
+                objectPool.RecallAll();
+            }
+        }
+
+        private void RemoveNullObjectPools()
+        {
+            List<PoolableObject> keysToRemove = new List<PoolableObject>();
             foreach (KeyValuePair<PoolableObject, ObjectPool> entry in this.objectPools)
             {
                 if (entry.Value == null)
                 {
-                    this.objectPools.Remove(entry.Key);
-                    continue;
+                    keysToRemove.Add(entry.Key);
                 }
+            }
 
-                entry.Value.RecallAll();
+            for (int i = 0; i < keysToRemove.Count; i += 1)
+            {
+                this.objectPools.Remove(keysToRemove[i]);
             }
         }
 
         private void OnDestroy()
         {
-#if UNITY_EDITOR
-            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && UnityEditor.EditorApplication.isPlaying)
+            List<PoolableObject> poolableObjects = new List<PoolableObject>(this.objectPools.Keys);
+            for (int i = 0; i < poolableObjects.Count; i += 1)
             {
-                return;
+                this.DestroyPool(poolableObjects[i]);
             }
-#endif
-
-            this.Clear();
         }
     }
 }

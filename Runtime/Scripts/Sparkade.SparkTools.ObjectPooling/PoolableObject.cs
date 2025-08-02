@@ -15,9 +15,6 @@
         /// <inheritdoc/>
         public Action Pushed { get; set; }
 
-        /// <inheritdoc/>
-        public Action Pruned { get; set; }
-
         /// <summary>
         /// Gets the object pool this item belongs to.
         /// </summary>
@@ -26,7 +23,10 @@
         /// <inheritdoc/>
         public void Repool()
         {
-            this.ObjectPool.Push(this);
+            if (this.ObjectPool != null)
+            {
+                this.ObjectPool.Push(this);
+            }
         }
 
         /// <summary>
@@ -45,14 +45,10 @@
         /// </summary>
         protected virtual void OnDestroy()
         {
-#if UNITY_EDITOR
-            if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode && UnityEditor.EditorApplication.isPlaying)
+            if (this.ObjectPool != null)
             {
-                return;
+                this.ObjectPool.RemoveItem(this);
             }
-#endif
-
-            this.ObjectPool.Prune(this);
         }
     }
 }

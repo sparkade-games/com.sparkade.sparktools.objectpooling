@@ -18,12 +18,7 @@
         Action Pushed { get; set; }
 
         /// <summary>
-        /// Gets or sets a callback for when the object is removed from the pool.
-        /// </summary>
-        Action Pruned { get; set; }
-
-        /// <summary>
-        /// Returns the object back to the object pool it belongs to.
+        /// Returns the item back to the object pool it belongs to.
         /// </summary>
         void Repool();
     }
